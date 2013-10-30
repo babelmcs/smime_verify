@@ -1,0 +1,80 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<title><roundcube:object name="pagetitle" /></title>
+<roundcube:include file="/includes/links.html" />
+<link rel="stylesheet" type="text/css" href="/this/smime_verify.css" />
+<script type="text/javascript" src="/functions.js"></script>
+<script type="text/javascript" src="/splitter.js"></script>
+<style type="text/css">
+#smime_verifykeyslist { width: <roundcube:exp expression="!empty(cookie:smime_verifyviewsplitter) ? cookie:smime_verifyviewsplitter-5 : 210" />px; }
+#smime_verifycontent-box { left: <roundcube:exp expression="!empty(cookie:smime_verifyviewsplitter) ? cookie:smime_verifyviewsplitter+5 : 220" />px;
+<roundcube:exp expression="browser:ie ? ('width:expression((parseInt(this.parentNode.offsetWidth)-'.(!empty(cookie:smime_verifyeviewsplitter) ? cookie:smime_verifyviewsplitter+5 : 220).')+\\'px\\');') : ''" />
+}
+</style>
+</head>
+<body class="iframe">
+
+<div id="prefs-title" class="boxtitle"><roundcube:label name="smime_verify.smime_verifykeys" /></div>
+<div id="prefs-details" class="boxcontent">
+
+<div id="keystoolbar">
+    <roundcube:button command="plugin.smime_verify-key-create" type="link" class="buttonPas create" classAct="button create" classSel="button createSel" title="smime_verify.createkeys" content=" " />
+    <roundcube:button command="plugin.smime_verify-key-delete" type="link" class="buttonPas delete" classAct="button delete" classSel="button deleteSel" title="smime_verify.deletekeys" content=" " />
+    <span class="separator">&nbsp;</span>
+    <roundcube:button command="plugin.smime_verify-key-import" type="link" class="buttonPas import" classAct="button import" classSel="button importSel" title="smime_verify.importkeys" content=" " />
+    <roundcube:button command="plugin.smime_verify-key-export" type="link" class="buttonPas export" classAct="button export" classSel="button exportSel" title="smime_verify.exportkeys" content=" " />
+    <roundcube:button name="messagemenulink" id="messagemenulink" type="link" class="button keymenu" title="smime_verify.keyactions" onclick="rcmail_ui.show_popup('messagemenu');return false" content=" " />
+</div>
+
+<div id="quicksearchbar" style="top: 35px; right: 10px;">
+    <roundcube:button name="searchmenulink" id="searchmenulink" image="/images/icons/glass.png" />
+    <roundcube:object name="searchform" id="quicksearchbox" />
+    <roundcube:button command="reset-search" id="searchreset" image="/images/icons/reset.gif" title="resetsearch" />
+</div>
+
+<div class="smime_verifyscreen">
+
+<div id="smime_verifykeyslist">
+<div class="boxtitle"><roundcube:label name="smime_verify.keyname" /></div>
+<div class="boxlistcontent">
+    <roundcube:object name="keyslist" id="keys-table" class="records-table" cellspacing="0" noheader="true" />
+</div>
+<div class="boxfooter">
+<div id="keylistcountbar" class="pagenav">
+    <roundcube:button command="firstpage" type="link" class="buttonPas firstpage" classAct="button firstpage" classSel="button firstpageSel" title="firstpage" content=" " />
+    <roundcube:button command="previouspage" type="link" class="buttonPas prevpage" classAct="button prevpage" classSel="button prevpageSel" title="previouspage" content=" " />
+    <roundcube:object name="countdisplay" style="padding:0 .5em; float:left" />
+    <roundcube:button command="nextpage" type="link" class="buttonPas nextpage" classAct="button nextpage" classSel="button nextpageSel" title="nextpage" content=" " />
+    <roundcube:button command="lastpage" type="link" class="buttonPas lastpage" classAct="button lastpage" classSel="button lastpageSel" title="lastpage" content=" " />
+</div>
+</div>
+</div>
+
+<script type="text/javascript">
+    var smime_verifyviewsplit = new rcube_splitter({id:'smime_verifyviewsplitter', p1: 'smime_verifykeyslist', p2: 'smime_verifycontent-box', orientation: 'v', relative: true, start: 215});
+    rcmail.add_onload('smime_verifyviewsplit.init()');
+</script>
+
+<div id="smime_verifycontent-box">
+    <roundcube:object name="keyframe" id="keyframe" width="100%" height="100%" frameborder="0" src="/watermark.html" />
+</div>
+
+</div>
+</div>
+
+<div id="messagemenu" class="popupmenu">
+    <ul class="toolbarmenu">
+        <li><roundcube:button class="disablelink" command="smime_verify.key-disable" label="smime_verify.keydisable" target="_blank" classAct="disablelink active" /></li>
+        <li><roundcube:button class="revokelink" command="smime_verify.key-revoke" label="smime_verify.keyrevoke" classAct="revokelink active" /></li>
+        <li class="separator_below"><roundcube:button class="sendlink" command="smime_verify.key-send" label="smime_verify.keysend" classAct="sendlink active" /></li>
+        <li><roundcube:button class="chpasslink" command="smime_verify.key-chpass" label="smime_verify.keychpass" classAct="chpasslink active" /></li>
+    </ul>
+</div>
+
+<script type="text/javascript">
+rcube_init_mail_ui();
+</script>
+
+</body>
+</html>
