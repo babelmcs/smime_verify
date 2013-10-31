@@ -3,6 +3,10 @@
 // smime_verify plugin options
 // --------------------------
 
-// Keys directory for all users. Default 'smime_verify/keys'.
+// Temp directory for signatures validating. Default 'smime_verify/tmp'.
 // Must be writeable by PHP process
-$config['smime_verify_keysdir'] =  'smime_verify/keys';
+$config['smime_verify_tempdir'] =  'smime_verify/tmp';
+
+// Log file for specific logging. Default 'smime_verify'.
+// Must be writeable by PHP process
+$config['smime_verify_logfile'] =  'smime_verify';
