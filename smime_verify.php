@@ -26,14 +26,8 @@ class smime_verify extends rcube_plugin
 {
 
   public $task = 'mail';
-  public $engine;
 
   private $rcmail;
-
-  private $env_loaded;
-  private $message;
-  private $keys_parts = array();
-  private $keys_bodies = array();
 
   private $log_file;
 
