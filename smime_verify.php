@@ -28,448 +28,368 @@
 
 class smime_verify extends rcube_plugin
 {
-    public $task = 'mail|settings';
-    public $engine;
+  public $task = 'mail';
+  public $engine;
 
-    private $env_loaded;
-    private $message;
-    private $keys_parts = array();
-    private $keys_bodies = array();
+  private $rcmail;
 
-    private $log_file;
+  private $env_loaded;
+  private $message;
+  private $keys_parts = array();
+  private $keys_bodies = array();
+
+  private $log_file;
 
 
+  /**
+   * Plugin initialization.
+   */
+  function init()
+  {
+    $this->rcmail = rcmail::get_instance();       
+
+    $section = rcube_utils::get_input_value('_section', rcube_utils::INPUT_GET);
+
+    $this->log_file = 'smime_verify';
+    $this->log_this("Plugin init...");
+
+    if ($this->rcmail->task == 'mail') {
+      // message parse/display hooks
+      //$this->add_hook('message_part_structure', array($this, 'parse_structure'));
+      //$this->add_hook('message_body_prefix', array($this, 'status_message'));
+
+      // message displaying
+      if ($this->rcmail->action == 'show' || $this->rcmail->action == 'preview') {
+	 $this->add_hook('message_load', array($this, 'message_load'));
+	// $this->add_hook('template_object_messagebody', array($this, 'message_output'));
+	// $this->register_action('plugin.smime_verifyimport', array($this, 'import_file'));
+      }
+    }
+  }
+
+  function log_this($message){
+      
+    write_log($this->log_file, $message);
+      
+  }
+
+
+ 
+  
     /**
-     * Plugin initialization.
+     * Handler for message_part_structure hook.
+     * Called for every part of the message.
+     *
+     * @param array Original parameters
+     *
+     * @return array Modified parameters
      */
-    function init()
+  function parse_structure($p)
+  {
+    $this->log_this('Message mimetype: ' . $p['mimetype']);
+    $this->log_this('Message structure' . print_r($p['structure'], true));
+    // senza envelop
+    if ($p['mimetype'] == 'multipart/signed') {
+      $this->parse_signed($p['structure']);
+    } // envelop
+    else if ($p['mimetype'] == 'application/pkcs7-mime') {
+      //      $this->parse_encrypted($p);
+    }    
+    return $p;
+  }
+
+  function parse_signed($structure){
+
+        /* if ($struct->parts[1] && $struct->parts[1]->mimetype == 'application/pkcs7-signature') { */
+
+	/*     $verified = openssl_pkcs7_verify("/home/loudgefly/email_sign_ok.eml", PKCS7_NOVERIFY); */
+	    												     
+        /* } */
+  }
+
+
+  /**
+   * Verify signed messages (SQ)
+   *
+   */
+  function smime_header_verify_do()
+  {
+
+    global $imapConnection, $passed_ent_id, $passed_id, $color, $message,
+      $mailbox, $where, $what, $startMessage, $uid_support,
+      $row_highlite_color;
+
+
+    // grab the sender address
+    $sender_address = '';
+    if (!empty($message->rfc822_header->from[0]->mailbox))
+      $sender_address = (!empty($message->rfc822_header->from[0]->host)
+                      ? $message->rfc822_header->from[0]->mailbox
+                        . '@' . $message->rfc822_header->from[0]->host
+			 : $message->rfc822_header->from[0]->mailbox);
+
+
+    if ($message->header->type0 == 'application' and $message->header->type1 == 'pkcs7-mime')
+      {
+
+	sq_change_text_domain('smime');
+
+	// Output for SM 1.5.2+
+	//
+	if (check_sm_version(1, 5, 2))
+	  {
+	    global $oTemplate;
+	    $oTemplate->assign('row_highlite_color', $row_highlite_color);
+	    $output = $oTemplate->fetch('plugins/smime/encrypted.tpl');
+	    return array('read_body_header' => $output);
+	  }
+
+
+	// Output for SM 1.4.x
+	else
+	  {
+
+	    /* ---------------------
+   This had been used to place a kind of "section"
+   that made the signed information more prominent
+         echo "      <tr>\n"
+            . "         <th bgcolor=\"$color[9]\" align=\"left\" valign=\"top\" colspan=\"3\">\n"
+            . '           ' . _("This message has been S/MIME encrypted") . "\n"
+            . "         </th>\n"
+            . "      </tr>\n";
+	    ------------------------- */
+
+         echo "      <tr bgcolor=\"" . $row_highlite_color . "\">\n"
+            . "        <td width=\"20%\" align=\"right\" valign=\"top\">\n<b>"
+	   . _("S/MIME Encrypted By:")
+            . "        </b></td><td width=\"80%\" valign=\"top\">\n"
+	   . _("Unknown")
+            . "        </td>\n"
+	   . "      </tr>\n";
+
+	  }
+
+	sq_change_text_domain('squirrelmail');
+
+      }      
+
+    if ($message->header->type0 == 'multipart' and $message->header->type1 == 'signed')
+      {
+	$cmd = "FETCH $passed_id BODY.PEEK[HEADER.FIELDS (Content-Type)]";
+	$read = sqimap_run_command($imapConnection, $cmd, true, $response, $mess, $uid_support);
+
+	if (preg_match('/protocol=(")?application\/(x-)?pkcs7-signature(")?/i', implode('', $read)))
+	  {
+
+	    // we have a detatched s/mime message
+	    //
+	    // we remove the MIME signature entity from the message here
+	    // so that SquirrelMail does not try to present it to the user
+	    //
+	    // previously array_pop was done unconditionally to remove the
+	    // signature entity, but SM was then popping off one entity
+	    // every time the message was viewed, which is wrong.
+	    // instead, loop through entities and remove just the signature part
+	    //
+	    $entity_index_to_unset = -1;
+	    foreach ($message->entities as $i => $entity)
+	      {
+		if (is_object($entity)
+		    && strtolower(get_class($entity)) == 'message'
+             && $entity->type0 == 'application'
+		    && strpos($entity->type1, 'pkcs7-signature') !== FALSE)
+		  {
+		    $entity_index_to_unset = $i;
+		    break;
+		  }
+	      }
+	    if ($entity_index_to_unset > -1)
+	      unset($message->entities[$entity_index_to_unset]);
+
+
+	    // Not sure why this was needed, but it was not doing anything
+	    // immediately useful beside b0rking the attachment.  W/out this
+	    // it correctly hides the s/mime sig attachment, at least in limited
+	    // testing w/out any other attachments
+	    // 
+	    // It was probably related to problems with the array_pop above,
+	    // which (see notes above) has been fixed in a better way
+	    /*
+         if (!isset($message->entities[1]))
+         {
+            $message->header->type0     = $message->entities[0]->header->type0;
+            $message->header->type1     = $message->entities[0]->header->type1;
+            $message->header->charset   = $message->entities[0]->header->parameters->charset;
+            $message->header->encoding  = $message->entities[0]->header->encoding;
+            $message->header->size      = $message->entities[0]->header->size;
+            $message->header->filename  = $message->entities[0]->header->disposition->properties->filename;
+            $message->header->entity_id = $message->entities[0]->header->entity_id;
+            $message->entities          = $message->entities[0]->entities;
+         }
+	    */
+
+	    $body = mime_fetch_full_body ($imapConnection, $passed_id);
+	    list ($retval, $lines, $name, $cert) = verify_smime($body, $sender_address);
+	    $verify_status = convert_verify_result_to_displayable_text($retval);
+
+
+	    $signed_parts = signed_parts($lines);
+
+
+	    sq_change_text_domain('smime');
+
+
+	    // build links
+	    //
+	    $download_link = sqm_baseuri() . 'plugins/smime/downloadcert.php?cert=' . $cert;
+	    if ($where && $what)
+	      $view_link = sqm_baseuri() . 'plugins/smime/viewcert.php?mailbox=' . urlencode($mailbox) . "&passed_id=$passed_id&where=" . urlencode($where) . "&what=" . urlencode($what) . "&cert=" . $cert;
+	    else
+	      $view_link = sqm_baseuri() . 'plugins/smime/viewcert.php?mailbox=' . urlencode($mailbox) . "&passed_id=$passed_id&startMessage=$startMessage&show_more=0&cert=" . $cert;
+
+
+	    if (check_sm_version(1, 5, 2))
+	      {
+		$view_tag = create_hyperlink($view_link, _("View Certificate"));
+		$download_tag = create_hyperlink($download_link, _("Download Certificate"));
+	      }
+	    else
+	      {
+		$view_tag = '<a href="' . $view_link . '">' . _("View Certificate") . '</a>';
+		$download_tag = '<a href="' . $download_link . '">' . _("Download Certificate") . '</a>';
+	      }
+
+
+	    $tworows = ($retval == 0 || $retval == 6);
+
+
+	    if ($retval == 0)
+	      $signer_verified = TRUE;
+	    else
+	      $signer_verified = FALSE;
+
+
+
+	    // Output for SM 1.5.2+
+	    //
+	    if (check_sm_version(1, 5, 2))
+	      {
+		global $oTemplate;
+		$oTemplate->assign('row_highlite_color', $row_highlite_color);
+		$oTemplate->assign('signer_verified', $signer_verified);
+		$oTemplate->assign('signer', $name . _(", ") . $verify_status, FALSE);
+		$oTemplate->assign('view_tag', $view_tag, FALSE);
+		$oTemplate->assign('download_tag', $download_tag, FALSE);
+		if ($tworows)
+		  $oTemplate->assign('signed_parts', $signed_parts);
+		else
+		  $oTemplate->assign('signed_parts', '');
+		$output = $oTemplate->fetch('plugins/smime/signed.tpl');
+		return array('read_body_header' => $output);
+	      }
+
+
+	    // Output for SM 1.4.x
+	    else
+	      {
+
+		/* ---------------------
+   This had been used to place a kind of "section"
+   that made the signed information more prominent
+            echo "      <tr>\n"
+               . "         <th bgcolor=\"$color[9]\" align=\"left\" valign=\"top\" colspan=\"3\">\n"
+               . "           " . _("This message has been S/MIME signed") . "\n"
+               . "         </th>\n"
+               . "      </tr>\n";
+	       ------------------------- */
+
+
+		$colortag1 = '';
+		$colortag2 = '';
+		if (!$signer_verified)
+		  {
+		    $colortag1 = "<font color=\"$color[2]\"><b>";
+		    $colortag2 = '</b></font>';
+		  }
+
+            echo "      <tr bgcolor=\"$row_highlite_color\">\n"
+               . "        <td width=\"20%\" align=\"right\" valign=\"top\">\n<b>"
+	      . _("S/MIME Signed By:")
+               . "        </b></td><td width=\"80%\" valign=\"top\">\n"
+               . "          <table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\">\n"
+               . "            <tr>\n"
+               . "              <td valign=\"top\" align=\"left\">\n"
+	      . "                $colortag1 $name" . _(", ") . "$verify_status$colortag2\n"
+               . "              </td>\n"
+               . "              <td valign=\"top\" align=\"right\" nowrap><small>\n"
+	      . "                $view_tag\n";
+
+            if (!$tworows)
+	      echo "<br />\n     $download_tag\n";
+
+            echo "                </small></td>\n"
+               . "            </tr>\n"
+               . "          </table>\n"
+               . "        </td>\n"
+	      . "      </tr>\n";
+
+
+            if ($tworows)
+	      {
+               echo "      <tr bgcolor=\"$row_highlite_color\">\n"
+                  . "         <td width=\"15%\" align=\"right\" valign=\"top\"><b>\n"
+		 . _("Signed Parts:")
+                  . "         </b></td><td width=\"85%\" valign=\"top\">\n"
+                  . "            <table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\">\n"
+                  . "              <tr>\n"
+                  . "                <td valign=\"top\" align=\"left\">\n"
+                  . "                  $signed_parts\n"
+                  . "               </td>\n"
+                  . "               <td valign=\"top\" align=\"right\" nowrap><small>\n"
+                  . "                 $download_tag\n"
+                  . "               </small></td>\n"
+                  . "            </tr>\n"
+                  . "          </table>\n"
+                  . "        </td>\n"
+		 . "      </tr>\n";
+
+	      }
+
+	      }
+
+	    sq_change_text_domain('squirrelmail');
+
+	  }
+
+      }
+
+  }
+
+
+
+    
+    /**
+     * Handler for message_load hook.
+     * Check message bodies and attachments for keys/certs.
+     */
+    function message_load($p)
     {
-        $rcmail = rcmail::get_instance();       
-
-        $section = rcube_utils::get_input_value('_section', rcube_utils::INPUT_GET);
-
-	$log_file = "smime_verify";
-	$this->log_this("Init in corso...");
-
-        if ($rcmail->task == 'mail') {
-            // message parse/display hooks
-            $this->add_hook('message_part_structure', array($this, 'parse_structure'));
-            $this->add_hook('message_body_prefix', array($this, 'status_message'));
-
-            // message displaying
-            if ($rcmail->action == 'show' || $rcmail->action == 'preview') {
-                $this->add_hook('message_load', array($this, 'message_load'));
-                $this->add_hook('template_object_messagebody', array($this, 'message_output'));
-                $this->register_action('plugin.smime_verifyimport', array($this, 'import_file'));
-            }
-        }
-        else if ($this->rc->task == 'settings') {
-            // add hooks for Smime_Verify settings
-            $this->add_hook('preferences_sections_list', array($this, 'preferences_section'));
-            $this->add_hook('preferences_list', array($this, 'preferences_list'));
-            $this->add_hook('preferences_save', array($this, 'preferences_save'));
-
-            // register handler for keys/certs management
-            $this->register_action('plugin.smime_verify', array($this, 'preferences_ui'));
-
-            // grab keys/certs management iframe requests
-            if ($this->rc->action == 'edit-prefs' && preg_match('/^smime_verify(certs|keys)/', $section)) {
-                $this->load_ui();
-                $this->ui->init($section);
-            }
-        }
-    }
-
-    function log_this($message){
+      $message = $p['object'];
+    
+      $filename = './tmp/' . $message->uid . '.eml';
+      if ( !( $fp = fopen($filename, 'w+')) ){
+	$this->log_this('Error opening ' . $filename );
+      }else{
+	$this->rcmail->storage->get_raw_body($message->uid, $fp);
       
-      write_log($this->log_file, $message);
+	fclose($fp);
+      
+	if( openssl_pkcs7_verify($filename, PKCS7_NOVERIFY))
+	  $this->log_this('Veryfing signature: OK');
+	else
+	  $this->log_this('Veryfing signature: INVALID');
+      }
       
     }
 
-
-/*     /\** */
-/*      * Plugin environment initialization. */
-/*      *\/ */
-/*     function load_env() */
-/*     { */
-/*         if ($this->env_loaded) */
-/*             return; */
-
-/*         $this->env_loaded = true; */
-
-/*         // Add include path for Smime_Verify classes and drivers */
-/*         $include_path = $this->home . '/lib' . PATH_SEPARATOR; */
-/*         $include_path .= ini_get('include_path'); */
-/*         set_include_path($include_path); */
-
-/*         // load the Smime_Verify plugin configuration */
-/*         $this->load_config(); */
-
-/*         // include localization (if wasn't included before) */
-/*         $this->add_texts('localization/'); */
-/*     } */
-
-/*     /\** */
-/*      * Plugin UI initialization. */
-/*      *\/ */
-/*     function load_ui() */
-/*     { */
-/*         if ($this->ui) */
-/*             return; */
-
-/*         // load config/localization */
-/*         $this->load_env(); */
-
-/*         // Load UI */
-/*         $this->ui = new smime_verify_ui($this, $this->home); */
-/*     } */
-
-/*     /\** */
-/*      * Plugin engine initialization. */
-/*      *\/ */
-/*     function load_engine() */
-/*     { */
-/*         if ($this->engine) */
-/*             return; */
-
-/*         // load config/localization */
-/*         $this->load_env(); */
-
-/*         $this->engine = new smime_verify_engine($this); */
-/*     } */
-
-/*     /\** */
-/*      * Handler for message_part_structure hook. */
-/*      * Called for every part of the message. */
-/*      * */
-/*      * @param array Original parameters */
-/*      * */
-/*      * @return array Modified parameters */
-/*      *\/ */
-/*     function parse_structure($p) */
-/*     { */
-/* //        $struct = $p['structure']; */
-
-/*         if ($p['mimetype'] == 'text/plain' || $p['mimetype'] == 'application/pgp') { */
-/*             $this->parse_plain($p); */
-/*         } */
-/*         else if ($p['mimetype'] == 'multipart/signed') { */
-/*             $this->parse_signed($p); */
-/*         } */
-/*         else if ($p['mimetype'] == 'multipart/encrypted') { */
-/*             $this->parse_encrypted($p); */
-/*         } */
-/*         else if ($p['mimetype'] == 'application/pkcs7-mime') { */
-/*             $this->parse_encrypted($p); */
-/*         } */
-
-/*         return $p; */
-/*     } */
-
-/*     /\** */
-/*      * Handler for preferences_sections_list hook. */
-/*      * Adds Smime_Verify settings sections into preferences sections list. */
-/*      * */
-/*      * @param array Original parameters */
-/*      * */
-/*      * @return array Modified parameters */
-/*      *\/ */
-/*     function preferences_section($p) */
-/*     { */
-/*         // add labels */
-/*         $this->add_texts('localization/'); */
-
-/*         $p['list']['smime_verifysettings'] = array( */
-/*             'id' => 'smime_verifysettings', 'section' => $this->gettext('smime_verifysettings'), */
-/*         ); */
-/*         $p['list']['smime_verifycerts'] = array( */
-/*             'id' => 'smime_verifycerts', 'section' => $this->gettext('smime_verifycerts'), */
-/*         ); */
-/*         $p['list']['smime_verifykeys'] = array( */
-/*             'id' => 'smime_verifykeys', 'section' => $this->gettext('smime_verifykeys'), */
-/*         ); */
-
-/*         return $p; */
-/*     } */
-
-/*     /\** */
-/*      * Handler for preferences_list hook. */
-/*      * Adds options blocks into Smime_Verify settings sections in Preferences. */
-/*      * */
-/*      * @param array Original parameters */
-/*      * */
-/*      * @return array Modified parameters */
-/*      *\/ */
-/*     function preferences_list($p) */
-/*     { */
-/*         if ($p['section'] == 'smime_verifysettings') { */
-/*             // This makes that section is not removed from the list */
-/*             $p['blocks']['dummy']['options']['dummy'] = array(); */
-/*         } */
-/*         else if ($p['section'] == 'smime_verifycerts') { */
-/*             // This makes that section is not removed from the list */
-/*             $p['blocks']['dummy']['options']['dummy'] = array(); */
-/*         } */
-/*         else if ($p['section'] == 'smime_verifykeys') { */
-/*             // This makes that section is not removed from the list */
-/*             $p['blocks']['dummy']['options']['dummy'] = array(); */
-/*         } */
-
-/*         return $p; */
-/*     } */
-
-/*     /\** */
-/*      * Handler for preferences_save hook. */
-/*      * Executed on Smime_Verify settings form submit. */
-/*      * */
-/*      * @param array Original parameters */
-/*      * */
-/*      * @return array Modified parameters */
-/*      *\/ */
-/*     function preferences_save($p) */
-/*     { */
-/*         if ($p['section'] == 'smime_verifysettings') { */
-/*             $a['prefs'] = array( */
-/* //                'dummy' => rcube_utils::get_input_value('_dummy', rcube_utils::INPUT_POST), */
-/*             ); */
-/*         } */
-
-/*         return $p; */
-/*     } */
-
-/*     /\** */
-/*      * Handler for keys/certs management UI template. */
-/*      *\/ */
-/*     function preferences_ui() */
-/*     { */
-/*         $this->load_ui(); */
-/*         $this->ui->init(); */
-/*     } */
-
-/*     /\** */
-/*      * Handler for message_body_prefix hook. */
-/*      * Called for every displayed (content) part of the message. */
-/*      * Adds infobox about signature verification and/or decryption */
-/*      * status above the body. */
-/*      * */
-/*      * @param array Original parameters */
-/*      * */
-/*      * @return array Modified parameters */
-/*      *\/ */
-/*     function status_message($p) */
-/*     { */
-/*         $part_id = $p['part']->mime_id; */
-
-/*         // skip: not a message part */
-/*         if ($p['part'] instanceof rcube_message) */
-/*             return $p; */
-
-/*         // skip: message has no signed/encoded content */
-/*         if (!$this->engine) */
-/*             return $p; */
-
-/*         // Decryption status */
-/*         if (isset($this->engine->decryptions[$part_id])) { */
-
-/*             // get decryption status */
-/*             $status = $this->engine->decryptions[$part_id]; */
-
-/*             // Load UI and add css script */
-/*             $this->load_ui(); */
-/*             $this->ui->add_css(); */
-
-/*             // display status info */
-/*             $attrib['id'] = 'smime_verify-message'; */
-
-/*             if ($status instanceof smime_verify_error) { */
-/*                 $attrib['class'] = 'smime_verifyerror'; */
-/*                 $code = $status->getCode(); */
-/*                 if ($code == smime_verify_error::E_KEYNOTFOUND) */
-/*                     $msg = rcube::Q(str_replace('$keyid', smime_verify_key::format_id($status->getData('id')), */
-/*                         $this->gettext('decryptnokey'))); */
-/*                 else if ($code == smime_verify_error::E_BADPASS) */
-/*                     $msg = rcube::Q($this->gettext('decryptbadpass')); */
-/*                 else */
-/*                     $msg = rcube::Q($this->gettext('decrypterror')); */
-/*             } */
-/*             else { */
-/*                 $attrib['class'] = 'smime_verifynotice'; */
-/*                 $msg = rcube::Q($this->gettext('decryptok')); */
-/*             } */
-
-/*             $p['prefix'] .= html::div($attrib, $msg); */
-/*         } */
-
-/*         // Signature verification status */
-/*         if (isset($this->engine->signed_parts[$part_id]) */
-/*             && ($sig = $this->engine->signatures[$this->engine->signed_parts[$part_id]]) */
-/*         ) { */
-/*             // add css script */
-/*             $this->load_ui(); */
-/*             $this->ui->add_css(); */
-
-/*             // display status info */
-/*             $attrib['id'] = 'smime_verify-message'; */
-
-/*             if ($sig instanceof smime_verify_signature) { */
-/*                 if ($sig->valid) { */
-/*                     $attrib['class'] = 'smime_verifynotice'; */
-/*                     $sender = ($sig->name ? $sig->name . ' ' : '') . '<' . $sig->email . '>'; */
-/*                     $msg = rcube::Q(str_replace('$sender', $sender, $this->gettext('sigvalid'))); */
-/*                 } */
-/*                 else { */
-/*                     $attrib['class'] = 'smime_verifywarning'; */
-/*                     $sender = ($sig->name ? $sig->name . ' ' : '') . '<' . $sig->email . '>'; */
-/*                     $msg = rcube::Q(str_replace('$sender', $sender, $this->gettext('siginvalid'))); */
-/*                 } */
-/*             } */
-/*             else if ($sig->getCode() == smime_verify_error::E_KEYNOTFOUND) { */
-/*                 $attrib['class'] = 'smime_verifywarning'; */
-/*                 $msg = rcube::Q(str_replace('$keyid', smime_verify_key::format_id($sig->getData('id')), */
-/*                     $this->gettext('signokey'))); */
-/*             } */
-/*             else { */
-/*                 $attrib['class'] = 'smime_verifyerror'; */
-/*                 $msg = rcube::Q($this->gettext('sigerror')); */
-/*             } */
-/* /\* */
-/*             $msg .= '&nbsp;' . html::a(array('href' => "#sigdetails", */
-/*                 'onclick' => rcmail_output::JS_OBJECT_NAME.".command('smime_verify-sig-details')"), */
-/*                 rcube::Q($this->gettext('showdetails'))); */
-/* *\/ */
-/*             // test */
-/* //            $msg .= '<br /><pre>'.$sig->body.'</pre>'; */
-
-/*             $p['prefix'] .= html::div($attrib, $msg); */
-
-/*             // Display each signature message only once */
-/*             unset($this->engine->signatures[$this->engine->signed_parts[$part_id]]); */
-/*         } */
-
-/*         return $p; */
-/*     } */
-
-/*     /\** */
-/*      * Handler for plain/text message. */
-/*      * */
-/*      * @param array Reference to hook's parameters (see smime_verify::parse_structure()) */
-/*      *\/ */
-/*     private function parse_plain(&$p) */
-/*     { */
-/*         $this->load_engine(); */
-/*         $this->engine->parse_plain($p); */
-/*     } */
-    
-/*     /\** */
-/*      * Handler for multipart/signed message. */
-/*      * Verifies signature. */
-/*      * */
-/*      * @param array Reference to hook's parameters (see smime_verify::parse_structure()) */
-/*      *\/ */
-/*     private function parse_signed(&$p) */
-/*     { */
-/*         $this->load_engine(); */
-/*         $this->engine->parse_signed($p); */
-/*     } */
-
-/*     /\** */
-/*      * Handler for multipart/encrypted and application/pkcs7-mime message. */
-/*      * */
-/*      * @param array Reference to hook's parameters (see smime_verify::parse_structure()) */
-/*      *\/ */
-/*     private function parse_encrypted(&$p) */
-/*     { */
-/*         $this->load_engine(); */
-/*         $this->engine->parse_encrypted($p); */
-/*     } */
-    
-/*     /\** */
-/*      * Handler for message_load hook. */
-/*      * Check message bodies and attachments for keys/certs. */
-/*      *\/ */
-/*     function message_load($p) */
-/*     { */
-/*         $this->message = $p['object']; */
-
-/*         // handle attachments vcard attachments */
-/*         foreach ((array)$this->message->attachments as $attachment) { */
-/*             if ($this->is_keys_part($attachment)) { */
-/*                 $this->keys_parts[] = $attachment->mime_id; */
-/*             } */
-/*         } */
-/*         // the same with message bodies */
-/*         foreach ((array)$this->message->parts as $part) { */
-/*             if ($this->is_keys_part($part)) { */
-/*                 $this->keys_parts[] = $part->mime_id; */
-/*                 $this->keys_bodies[] = $part->mime_id; */
-/*             } */
-/*         } */
-/*         // @TODO: inline PGP keys */
-
-/*         if ($this->keys_parts) { */
-/*             $this->add_texts('localization'); */
-/*         } */
-/*     } */
-
-/*     /\** */
-/*      * Handler for template_object_messagebody hook. */
-/*      * This callback function adds a box below the message content */
-/*      * if there is a key/cert attachment available */
-/*      *\/ */
-/*     function message_output($p) */
-/*     { */
-/*         $attach_script = false; */
-
-/*         foreach ($this->keys_parts as $part) { */
-
-/*             // remove part's body */
-/*             if (in_array($part, $this->keys_bodies)) */
-/*                 $p['content'] = ''; */
-
-/*             $style = "margin:0 1em; padding:0.2em 0.5em; border:1px solid #999; width: auto" */
-/*                 ." border-radius:4px; -moz-border-radius:4px; -webkit-border-radius:4px"; */
-
-/*             // add box below message body */
-/*             $p['content'] .= html::p(array('style' => $style), */
-/*                 html::a(array( */
-/*                     'href' => "#", */
-/*                     'onclick' => "return ".rcmail_output::JS_OBJECT_NAME.".smime_verify_import_attachment('".rcube::JQ($part)."')", */
-/*                     'title' => $this->gettext('keyattimport')), */
-/*                     html::img(array('src' => $this->url('skins/classic/key_add.png'), 'style' => "vertical-align:middle"))) */
-/*                 . ' ' . html::span(null, $this->gettext('keyattfound'))); */
-
-/*             $attach_script = true; */
-/*         } */
-
-/*         if ($attach_script) { */
-/*             $this->include_script('smime_verify.js'); */
-/*         } */
-
-/*         return $p; */
-/*     } */
-
-/*     /\** */
-/*      * Handler for attached keys/certs import */
-/*      *\/ */
-/*     function import_file() */
-/*     { */
-/*         $this->load_engine(); */
-/*         $this->engine->import_file(); */
-/*     } */
-
-/*     /\** */
-/*      * Checks if specified message part is a PGP-key or S/MIME cert data */
-/*      * */
-/*      * @param rcube_message_part Part object */
-/*      * */
-/*      * @return boolean True if part is a key/cert */
-/*      *\/ */
-/*     private function is_keys_part($part) */
-/*     { */
-/*         // @TODO: S/MIME */
-/*         return ( */
-/*             // Content-Type: application/pgp-keys */
-/*             $part->mimetype == 'application/pgp-keys' */
-/*         ); */
-/*     } */
 }

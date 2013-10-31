@@ -1,9 +1,10 @@
 <?php
 
 $labels = array();
+$labels['smime_verify_certs'] = 'S/MIME Verify - S/MIME Certificates ';
+$labels['smime_verify_keys'] = 'S/MIME Verify - S/MIME Keys ';
+
 $labels['enigmasettings'] = 'Enigma: Settings';
-$labels['enigmacerts'] = 'Enigma: Certificates (S/MIME)';
-$labels['enigmakeys'] = 'Enigma: Keys (PGP)';
 $labels['keysfromto'] = 'Keys $from to $to of $count';
 $labels['keyname'] = 'Name';
 $labels['keyid'] = 'Key ID';
