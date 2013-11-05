@@ -30,6 +30,8 @@ class smime_verify extends rcube_plugin
   private $rcmail;
 
   private $log_file;
+  
+  private $log_debug;
 
   /**
    * Plugin initialization.
@@ -37,120 +39,179 @@ class smime_verify extends rcube_plugin
   function init()
   {
     $this->rcmail = rcmail::get_instance();       
-
+    
+    $this->load_config();
+    
     $section = rcube_utils::get_input_value('_section', rcube_utils::INPUT_GET);
 
     $this->log_file = $this->rcmail->config->get('smime_verify_logfile', 'smime_verify');
-    $this->log_this("Plugin init...");
 
-    if ($this->rcmail->task == 'mail') {
-      // message parse/display hooks
-      //$this->add_hook('message_part_structure', array($this, 'parse_structure'));
-      //$this->add_hook('message_body_prefix', array($this, 'status_message'));
+    if ( $this->rcmail->config->get('smime_verify_debug') === 'true' )
+      $this->log_debug = true;
+    else 
+      $this->log_debug = false;
+    
+    $this->smime_verify_debug_log("Plugin init...");
 
-      // message displaying
-      if ($this->rcmail->action == 'show' || $this->rcmail->action == 'preview') {
-	$this->add_hook('message_load', array($this, 'message_load'));
-	// $this->add_hook('template_object_messagebody', array($this, 'message_output'));
-	// $this->register_action('plugin.smime_verifyimport', array($this, 'import_file'));
-      }
-    }
+    // message displaying hook: checking method
+    if ($this->rcmail->action == 'show' || $this->rcmail->action == 'preview') {
+      $this->add_hook('message_load', array($this, 'message_load'));
+    }  
+    
   }
 
   /**
-   * Specific logging for this extension.
+   * Specific error logging for this extension.
    */
-  function log_this($message){
+  function smime_verify_error_log($message){
       
     write_log($this->log_file, $message);
       
   }
+
+  /**
+   * Specific debug logging for this extension.
+   */
+  function smime_verify_debug_log($message){
+   
+     if ( $this->log_debug )
+       write_log($this->log_file, $message);
+      
+  }
+
+  /**
+   * Injects HTML into message headers table to show sign 
+   * verification result (SUCCESSFULL)
+   */
+  function messageheaders_signOK_html($p)
+  {
+    
+    // obtaining position for message headers table end tags
+    $table_tail = "\n</tbody>\n</table>";
+    $injection_point = strrpos( $p['content'], $table_tail );
+    $new_html = substr( $p['content'], 0, $injection_point );
+
+
+    // string containing the new row data 
+    $injected_html = "<tr><td class=\"header-title\">Verifica Firma</td>\n".
+      "<td class=\"header date\">OK</td>\n".
+      "</tr>";
+
+    // injecting concatenating table first part, new row, table end tags
+    $new_html .= $injected_html . $table_tail ; 
+    $p['content'] = $new_html ;  
+
+    return $p;
+
+  }
+  
+  /**
+   * Injects HTML into message headers table to show sign 
+   * verification result (FAILED)
+   */
+  function messageheaders_signFAIL_html($p)
+  {
+    
+    // obtaining position for message headers table end tags
+    $table_tail = "\n</tbody>\n</table>";
+    $injection_point = strrpos( $p['content'], $table_tail );
+    $new_html = substr( $p['content'], 0, $injection_point );
+
+
+    // string containing the new row data 
+    $injected_html = "<tr><td class=\"header-title\">Verifica Firma</td>\n".
+      "<td class=\"header date\">NON VALIDA</td>\n".
+      "</tr>";
+
+    // injecting concatenating table first part, new row, table end tags
+    $new_html .= $injected_html . $table_tail ; 
+    $p['content'] = $new_html ;  
+
+    return $p;
+
+  }
     
   /**
    * Handler for message_load hook.
-   * Check message bodies and attachments for keys/certs.
+   * Checks message content for signature to check
    */
   function message_load($p)
   {
-
+    
     $message = $p['object'];
 
+    // message has signed content
     if ( $message->get_header('Content-Type') === 'multipart/signed'){      
 
-      $homedir = $this->rcmail->config->get('smime_verify_tempdir', INSTALL_PATH . 'plugins/smime_verify/tmp');
+      // retrieving tempdir config parameter
+      $tempdir = $this->rcmail->config->get('smime_verify_tempdir', '/tmp');
 
-      if (!$homedir){
-	$this->log_this('Unable to find SMIME Verify temp directory config option');
-	return;
+      // tempdir does not exist
+      if (!$tempdir){
+      	$this->smime_verify_error_log('Unable to find temp directory');
+      	return;
       }
       
-      // check if homedir exists (create it if not) and is readable                                                                                         
-      if (!file_exists($homedir)){
+      // checks if tempdir exists (tries to create it otherwise) and is readable
+      if (!file_exists($tempdir)){
 
-	$this->log_this('SMIME Verify temp directory ($homedir) doesn\'t exists, SMIME Verify will try to create it...');
+      	$this->smime_verify_error_log("SMIME Verify temp directory ($tempdir) doesn't exists, SMIME Verify will try to create it...");
 
-	if( !mkdir($homedir, 0700) ){
-	  $this->log_this('Unable to create SMIME Verify temp directory ($homedir)');
-	  return;
-	}
+	// creation of tempdir is not possible
+      	if( !mkdir($tempdir, 0700) ){
+      	  $this->smime_verify_error_log("Unable to create SMIME Verify temp directory ($tempdir) ");
+      	  return;
+      	}
       
       }
       
-      if (!is_writable($homedir)){
-	$this->log_this('SMIME Verify temp directory ($homedir) is not writable');
-	return;
-      }      
+      // checks if tempdir is writable
+      if (!is_writable($tempdir)){
+      	$this->smime_verify_error_log("SMIME Verify temp directory ($tempdir) is not writable");
+      	return;
+      }
     
-      $filename = $homedir . '/' . $message->uid . '.eml';
+      $this->smime_verify_debug_log('Found signature to check for message with ID: ' . $message->uid );
+
+      // tempfile filename uses unique message id
+      $filename = 'smime_verify' . $message->uid; 
       
-      if ( !($fp = fopen($filename, 'w+')) ){
+      // creating and opening tempfile 
+      if ( !($filename = tempnam( $tempdir, $filename)) || !($fp = fopen($filename, 'w+')) ){
 	
-	$this->log_this('Error opening temp file ' . $filename . ' for signature verification' );
+	$this->smime_verify_error_log('Error opening temp file ' . $filename . ' for signature verification' );
 	return;
 	
       }else{
+	
+	// gets message content, fills temp file, invokes openssl functions on it
+	$this->smime_verify_debug_log('Using tempfile: ' . $filename . ' for signature verification' );
+	
+	$result = false;
+
+	$this->rcmail->storage->get_raw_body($message->uid, $fp);    
       
-	$this->rcmail->storage->get_raw_body($message->uid, $fp);
-      
-	fclose($fp);
-      
+	// verifies signature and choosing proper html generation function depending on result
 	if( openssl_pkcs7_verify($filename, PKCS7_NOVERIFY)){
-	  $this->log_this('Veryfing signature: OK');
-	  return true;
+	  $this->smime_verify_debug_log('Veryfing signature: OK');	  
+	  $this->add_hook('template_object_messageheaders', array($this, 'messageheaders_signOK_html'));
+	  $result = true;
 	}
 	else{
-	  $this->log_this('Veryfing signature: INVALID');
-	  return false;
+	  $this->smime_verify_debug_log('Veryfing signature: INVALID');	        
+	  $this->add_hook('template_object_messageheaders', array($this, 'messageheaders_signFAIL_html'));
+	  $result = false;
 	}
+	
+	// destroying tempfile
+	unlink($filename);
+	
+	return $result;
 
       }
 
     }
 
   }
-
-    
-  /*   /\** */
-  /*    * Handler for message_part_structure hook. */
-  /*    * Called for every part of the message. */
-  /*    * */
-  /*    * @param array Original parameters */
-  /*    * */
-  /*    * @return array Modified parameters */
-  /*    *\/ */
-  /* function parse_structure($p) */
-  /* { */
-  /*   $this->log_this('Message mimetype: ' . $p['mimetype']); */
-  /*   $this->log_this('Message structure' . print_r($p['structure'], true)); */
-  /*   // senza envelop */
-  /*   if ($p['mimetype'] == 'multipart/signed') { */
-  /*     $this->parse_signed($p['structure']); */
-  /*   } // envelop */
-  /*   else if ($p['mimetype'] == 'application/pkcs7-mime') { */
-  /*     //      $this->parse_encrypted($p); */
-  /*   }     */
-  /*   return $p; */
-  /* } */
-
 
 }
