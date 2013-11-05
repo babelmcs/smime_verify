@@ -11,4 +11,4 @@ $config['smime_verify_tempdir'] =  '/tmp';
 $config['smime_verify_logfile'] =  'smime_verify';
 
 // Debug logging. Default 'false'.
-$config['smime_verify_debug'] =  'false';
+$config['smime_verify_debug'] =  'true';
