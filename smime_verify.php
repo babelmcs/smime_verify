@@ -33,6 +33,7 @@ class smime_verify extends rcube_plugin
   
   private $log_debug;
 
+
   /**
    * Plugin initialization.
    */
@@ -80,54 +81,63 @@ class smime_verify extends rcube_plugin
   }
 
   /**
-   * Injects HTML into message headers table to show sign 
-   * verification result (SUCCESSFULL)
+   * Injects HTML into message headers tables to show sign 
+   * verification result 
    */
-  function messageheaders_signOK_html($p)
+  function smime_verify_html_injector( $p, $injected_html){
+    
+    // retrieving skin name, different skins use different displaying methods                                                                               
+    $skin = $this->rcmail->config->get('skin'); 
+
+    // for classic skin is enough modify 'content' field of $p 
+    if ( $skin == 'classic' || $p['id'] == 'preview-allheaders' ){
+
+      // obtaining position for message headers table end tags
+      $table_tail = "\n</tbody>\n</table>";
+      $injection_point = strrpos( $p['content'], $table_tail );
+      $new_html = substr( $p['content'], 0, $injection_point );
+
+      // classic skin shows headers in a table, we need a new row 
+      $injected_html = '<tr>' . $injected_html . '</tr>';
+      
+      // injecting concatenating table first part, new row, table end tags
+      $new_html .= $injected_html . $table_tail ; 
+      $p['content'] = $new_html ;  
+    
+    }
+
+    // larry and babel skins use horizzontal showing 
+    if ( ($skin == 'larry' || $skin == 'babel') && $p['valueof'] == 'date' )
+      $p['content'] .= $injected_html;
+	
+    return $p;
+  }
+
+  /**
+   * Shows successfull sign verification result
+   */
+  function smime_verify_messageheaders_OK($p)
   {
     
-    // obtaining position for message headers table end tags
-    $table_tail = "\n</tbody>\n</table>";
-    $injection_point = strrpos( $p['content'], $table_tail );
-    $new_html = substr( $p['content'], 0, $injection_point );
-
-
-    // string containing the new row data 
-    $injected_html = "<tr><td class=\"header-title\">Verifica Firma</td>\n".
-      "<td class=\"header date\">OK</td>\n".
-      "</tr>";
-
-    // injecting concatenating table first part, new row, table end tags
-    $new_html .= $injected_html . $table_tail ; 
-    $p['content'] = $new_html ;  
-
-    return $p;
+    // string containing data about signature verification
+    $injected_html = "<td class=\"header-title\">Verifica Firma</td>\n".
+      "<td class=\"header date\">OK</td>\n";
+                      
+    return $this->smime_verify_html_injector( $p, $injected_html);
 
   }
   
-  /**
-   * Injects HTML into message headers table to show sign 
-   * verification result (FAILED)
+   /**
+   * Shows failed sign verification result
    */
-  function messageheaders_signFAIL_html($p)
+  function smime_verify_messageheaders_FAIL($p)
   {
     
-    // obtaining position for message headers table end tags
-    $table_tail = "\n</tbody>\n</table>";
-    $injection_point = strrpos( $p['content'], $table_tail );
-    $new_html = substr( $p['content'], 0, $injection_point );
+    // string containing data about signature verification
+    $injected_html = "<td class=\"header-title\">Verifica Firma</td>\n".
+      "<td class=\"header date\">NON VALIDA</td>\n";
 
-
-    // string containing the new row data 
-    $injected_html = "<tr><td class=\"header-title\">Verifica Firma</td>\n".
-      "<td class=\"header date\">NON VALIDA</td>\n".
-      "</tr>";
-
-    // injecting concatenating table first part, new row, table end tags
-    $new_html .= $injected_html . $table_tail ; 
-    $p['content'] = $new_html ;  
-
-    return $p;
+    return $this->smime_verify_html_injector( $p, $injected_html);
 
   }
     
@@ -194,12 +204,12 @@ class smime_verify extends rcube_plugin
 	// verifies signature and choosing proper html generation function depending on result
 	if( openssl_pkcs7_verify($filename, PKCS7_NOVERIFY)){
 	  $this->smime_verify_debug_log('Veryfing signature: OK');	  
-	  $this->add_hook('template_object_messageheaders', array($this, 'messageheaders_signOK_html'));
+	  $this->add_hook('template_object_messageheaders', array($this, 'smime_verify_messageheaders_OK'));
 	  $result = true;
 	}
 	else{
 	  $this->smime_verify_debug_log('Veryfing signature: INVALID');	        
-	  $this->add_hook('template_object_messageheaders', array($this, 'messageheaders_signFAIL_html'));
+	  $this->add_hook('template_object_messageheaders', array($this, 'smime_verify_messageheaders_FAIL'));
 	  $result = false;
 	}
 	
