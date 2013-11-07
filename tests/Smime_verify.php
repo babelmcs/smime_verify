@@ -1,5 +1,18 @@
 <?php
-
+/*
+ * Smime verify verifies .p7s certificate signature calling a 
+ * proper php integrated openssl functions, then returns a 
+ * related message to roundcube client side.
+ * 
+ * 0 - smime_verify is a subclass of  rcube_plugin
+ * 1 - log file config parameter is properly set by calling rc framework
+ * 2 - smime_verify->rcmail exists and is an instance of rcmail
+ * 3 - smime_verify->rcmail has defined callback function for the hook 'message_load' 
+ * 4 - 
+ *
+ *
+ *
+ */
 class SMime_Verify_Plugin extends PHPUnit_Framework_TestCase
 {
 
@@ -19,6 +32,8 @@ class SMime_Verify_Plugin extends PHPUnit_Framework_TestCase
         $this->assertInstanceOf('smime_verify', $plugin);
         $this->assertInstanceOf('rcube_plugin', $plugin);
     }
+
+
 
     public function testInitRcmail()
     {
