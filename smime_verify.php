@@ -45,6 +45,10 @@ class smime_verify extends rcube_plugin
      
     $section = rcube_utils::get_input_value('_section', rcube_utils::INPUT_GET);
 
+    $this->include_script('jquery.qtip.min.js');
+    $this->include_stylesheet('jquery.qtip.min.css');
+    $this->include_script('smime_verify.js');
+    
     $this->log_file = $this->rcmail->config->get('smime_verify_logfile', 'smime_verify');
 
     if ( $this->rcmail->config->get('smime_verify_debug') === 'true' )
@@ -120,7 +124,7 @@ class smime_verify extends rcube_plugin
   {
     
     // string containing data about signature verification
-    $injected_html = "<td class=\"header-title\">Verifica Firma</td>\n".
+    $injected_html = "<td id=\"smime_verify_signature\" class=\"header-title\">Verifica Firma</td>\n".
       "<td class=\"header date\">OK</td>\n";
                       
     return $this->smime_verify_html_injector( $p, $injected_html);
@@ -134,7 +138,7 @@ class smime_verify extends rcube_plugin
   {
     
     // string containing data about signature verification
-    $injected_html = "<td class=\"header-title\">Verifica Firma</td>\n".
+    $injected_html = "<td id=\"smime_verify_signature\" class=\"header-title\">Verifica Firma</td>\n".
       "<td class=\"header date\">NON VALIDA</td>\n";
 
     return $this->smime_verify_html_injector( $p, $injected_html);
