@@ -187,7 +187,7 @@ class smime_verify extends rcube_plugin
 
     // string containing data about signature verification
     $injected_html = sprintf('<td class="header-title">Verifica Firma</td>' . "\n".
-			     '<td id="smime_verify_signature%s" class="header date">'.
+			     '<td id="smime_verify_signature%s" class="header date" style="padding:0px">'.
 			     '<img src="./plugins/smime_verify/img/firma%s.png" style="width:40px; height:27px" />'.
 			     '</td>' . "\n",
 			     $ver_string,
