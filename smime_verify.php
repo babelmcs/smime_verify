@@ -330,14 +330,16 @@ class smime_verify extends rcube_plugin
 
 	$this->debug_log('Veryfing signature: OK');	  
 
-
 	$this->result['consegnatoa'] = $cert_info['subject']['CN'];
-	$this->result['email'] = $cert_info['extensions']['subjectAltName'];
+	$this->result['email'] = str_replace('email:', '', $cert_info['extensions']['subjectAltName']);
 	$this->result['consegnatoda'] = $cert_info['issuer']['CN'];
 	$this->result['validoda'] = strftime('%c', $cert_info['validFrom_time_t']); 
 	$this->result['validofinoa'] = strftime('%c', $cert_info['validTo_time_t']); 
-	$this->result['seriale'] = "";
-
+	
+	$colon_position = strrpos( $cert_info['extensions']['authorityKeyIdentifier'], ':' );
+	
+	$this->result['seriale'] = ltrim(substr($cert_info['extensions']['authorityKeyIdentifier'] , $colon_position+1), '0');
+	
       }
       else{
 
