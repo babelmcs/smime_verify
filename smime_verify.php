@@ -54,31 +54,31 @@ class smime_verify extends rcube_plugin
 
     $this->log_debug = ($this->rcmail->config->get('smime_verify_debug') === 'true'); 
     
-    $this->smime_verify_debug_log("Plugin init...");
+    $this->debug_log("Plugin init...");
 
     // message displaying hook: checking method
     if ($this->rcmail->action == 'show' || $this->rcmail->action == 'preview') {
       $this->add_hook('message_load', array($this, 'message_load'));
     }  
-    
+ 
   }
 
   function is_tempdir_writable($tempdir){ //log callback 
 
        // tempdir does not exist
       if (!$tempdir){
-      	$this->smime_verify_error_log('Unable to find temp directory');
+      	$this->error_log('Unable to find temp directory');
       	return false;
       }
       
       // checks if tempdir exists (tries to create it otherwise) and is readable
       if (!file_exists($tempdir)){
 
-      	$this->smime_verify_error_log("SMIME Verify temp directory ($tempdir) doesn't exists, SMIME Verify will try to create it...");
+      	$this->error_log("SMIME Verify temp directory ($tempdir) doesn't exists, SMIME Verify will try to create it...");
 
 	// creation of tempdir is not possible
       	if( !mkdir($tempdir, 0700) ){
-      	  $this->smime_verify_error_log("Unable to create SMIME Verify temp directory ($tempdir) ");
+      	  $this->error_log("Unable to create SMIME Verify temp directory ($tempdir) ");
       	  return false;
       	}
       
@@ -86,7 +86,7 @@ class smime_verify extends rcube_plugin
       
       // checks if tempdir is writable
       if (!is_writable($tempdir)){
-      	$this->smime_verify_error_log("SMIME Verify temp directory ($tempdir) is not writable");
+      	$this->error_log("SMIME Verify temp directory ($tempdir) is not writable");
       	return false;
       }
       
@@ -98,7 +98,7 @@ class smime_verify extends rcube_plugin
   /**
    * Specific error logging for this extension.
    */
-  function smime_verify_error_log($message){
+  function error_log($message){
       
     write_log($this->log_file, $message);
       
@@ -107,7 +107,7 @@ class smime_verify extends rcube_plugin
   /**
    * Specific debug logging for this extension.
    */
-  function smime_verify_debug_log($message){
+  function debug_log($message){
    
      if ( $this->log_debug )
        write_log($this->log_file, $message);
@@ -118,7 +118,7 @@ class smime_verify extends rcube_plugin
    * Injects HTML into message headers tables to show sign 
    * verification result 
    */
-  function smime_verify_html_injector( $p, $injected_html){
+  function html_injector( $p, $injected_html){
     
     // retrieving skin name, different skins use different displaying methods                                                                               
     $skin = $this->rcmail->config->get('skin'); 
@@ -148,31 +148,53 @@ class smime_verify extends rcube_plugin
   }
 
   /**
-   * Shows successfull sign verification result
-   */
-  function smime_verify_messageheaders_OK($p)
-  {
-    
-    // string containing data about signature verification
-    $injected_html = "<td id=\"smime_verify_signature\" class=\"header-title\">Verifica Firma</td>\n".
-      "<td class=\"header date\">OK</td>\n";
-                      
-    return $this->smime_verify_html_injector( $p, $injected_html);
-
-  }
-  
-   /**
    * Shows failed sign verification result
    */
-  function smime_verify_messageheaders_FAIL($p)
+  function messageheaders($p)
   {
+
+    if ($this->result['valid']){
     
+      $ver_string = "OK";
+      $message = sprintf('<b>Questo messaggio &egrave; firmato</b></br>'.
+			 'Il messaggio non &egrave; stato modificato</br>'.
+			 'Il certificato &egrave; verificato</br>'.
+			 'L\'indirizzo mittente corrisponde al certificato allegato</br>'.
+			 '</br><b>Info sul certificato:</b></br>'.
+			 '<b>Consegnato a:</b> &nbsp; %s</br>'.
+			 '<b>e-mail:</b> &nbsp; %s</br>'.
+			 '<b>Consegnato da:</b> &nbsp; %s</br>'.
+			 '<b>Valido da:</b> &nbsp; %s</br>'.
+			 '<b>Valido fino a:</b> &nbsp; %s</br>'.
+			 '<b>Seriale:</b> &nbsp; %s',
+			 $this->result['consegnatoa'],
+			 $this->result['email'],
+			 $this->result['consegnatoda'],
+			 $this->result['validoda'],
+			 $this->result['validofinoa'],
+			 $this->result['seriale']);
+
+    }
+    else{
+      
+      $ver_string = "FAILED";
+      $message = "<b>La firma per questo messaggio non risulta verificata</b></br>";
+    
+    }
+
+    $info_container = sprintf('<div id="smime_verify_info_container" style="visibility:hidden; width:0px; height:0px">%s</div>',
+			      $message);
+
     // string containing data about signature verification
-    $injected_html = "<td id=\"smime_verify_signature\" class=\"header-title\">Verifica Firma</td>\n".
-      "<td class=\"header date\">NON VALIDA</td>\n";
-
-    return $this->smime_verify_html_injector( $p, $injected_html);
-
+    $injected_html = sprintf('<td class="header-title">Verifica Firma</td>' . "\n".
+			     '<td id="smime_verify_signature%s" class="header date">'.
+			     '<img src="./plugins/smime_verify/img/firma%s.png" style="width:40px; height:27px" />'.
+			     '</td>' . "\n",
+			     $ver_string,
+			     $ver_string);
+    
+    return $this->html_injector( $p, $injected_html . $info_container);
+    
   }
     
   /**
@@ -187,7 +209,7 @@ class smime_verify extends rcube_plugin
     // message has signed content
     if ( $message->get_header('Content-Type') === 'multipart/signed'){      
 
-      $this->smime_verify_debug_log('Found signature to check for message with ID: ' . $message->uid );
+      $this->debug_log('Found signature to check for message with ID: ' . $message->uid );
 
       // retrieving tempdir config parameter
       $tempdir = $this->rcmail->config->get('smime_verify_tempdir', '/tmp');
@@ -195,54 +217,142 @@ class smime_verify extends rcube_plugin
       if (!$this->is_tempdir_writable($tempdir))
 	return;
       
-      // tempfile filename uses unique message id
-      $filename = 'smime_verify' . $message->uid; 
+      // tempfile filenames 
+      $message_filename = 'smime_verify' . $message->uid . '.eml';
+      $cert_filename = 'smime_verify' . $message->uid  . '.pem'; 
       
-      // creating and opening tempfile 
-      if ( !($filename = tempnam( $tempdir, $filename)) || !($fp = fopen($filename, 'w+')) ){
-	$this->smime_verify_error_log('Error opening temp file ' . $filename . ' for signature verification' );
+      // creating and opening tempfiles 
+      if ( !($message_filename = tempnam( $tempdir, $message_filename)) || !($fp = fopen($message_filename, 'w+')) ){
+	$this->error_log('Error opening temp file ' . $message_filename . ' for signature verification' );
 	return;
       }
-	
+
+      if ( !($cert_filename = tempnam( $tempdir, $cert_filename)) ){
+	$this->error_log('Error creating temp file ' . $cert_filename . ' for certificate reading' );
+	return;
+      }
+      	
       // gets message content, fills temp file, invokes openssl functions on it
-      $this->smime_verify_debug_log('Using tempfile: ' . $filename . ' for signature verification' );
-	
+      $this->debug_log('Using tempfile: ' . $message_filename . ' for signature verification' );     
+      $this->debug_log('Using tempfile: ' . $cert_filename . ' for certificate reading' );
+
       $this->result = array();
 
       $this->rcmail->storage->get_raw_body($message->uid, $fp);    
       
-      // verifies signature and choosing proper html generation function depending on result
-      if( openssl_pkcs7_verify($filename, PKCS7_NOVERIFY)){
-	$this->smime_verify_debug_log('Veryfing signature: OK');	  
+      // verifies signature 
+      $this->result['valid'] =  openssl_pkcs7_verify($message_filename, PKCS7_NOVERIFY, $cert_filename);
+      
+      $cert_info = array();
+      $cert_content = file_get_contents($cert_filename);
+      $cert_info = openssl_x509_parse( $cert_content );
 
-	$this->result['valid'] = true;
-	$this->result['message'] = "<b>Questo messaggio &egrave; firmato<\b><\br>".
-	  "Il messaggio non &egrave; stato modificato<\br>".
-	  "Il certificato &egrave; verificato<\br>".
-	  "L'indirizzo email del mittente corrisponde al certificato contenutop nella mail<\br>";
-	$this->result['consegnatoa'] = true;
-	$this->result['email'] = true;
-	$this->result['consegnatoda'] = true;
-	$this->result['validoda'] = true;
-	$this->result['validofinoa'] = true;
-	$this->result['seriale'] = true;
+      // choosing proper html generation function depending on result
+      if ( $this->result['valid'] ){
 
-	$this->add_hook('template_object_messageheaders', array($this, 'smime_verify_messageheaders_OK'));	  
+
+/* 	array (size=12) */
+/* 	  'name' => string '/C=IT/O=AcmePEC S.p.A./CN=Posta Certificata' (length=43) */
+/*   'subject' =>  */
+/* 	  array (size=3) */
+/* 	  'C' => string 'IT' (length=2) */
+/* 	  'O' => string 'AcmePEC S.p.A.' (length=14) */
+/* 	  'CN' => string 'Posta Certificata' (length=17) */
+/* 	  'hash' => string '01ebc369' (length=8) */
+/*   'issuer' =>  */
+/* 	  array (size=4) */
+/* 	  'CN' => string 'Certificatore S.p.A.' (length=20) */
+/* 	  'C' => string 'IT' (length=2) */
+/* 	  'O' => string 'Certificatore1' (length=14) */
+/* 	  'OU' => string 'Certification Service Provider' (length=30) */
+/*   'version' => int 2 */
+/* 	  'serialNumber' => string '2' (length=1) */
+/* 	  'validFrom' => string '110609135257Z' (length=13) */
+/* 	  'validTo' => string '140305135257Z' (length=13) */
+/*   'validFrom_time_t' => int 1307627577 */
+/*   'validTo_time_t' => int 1394027577 */
+/*   'purposes' =>  */
+/* 	  array (size=9) */
+/*       1 =>  */
+/* 	  array (size=3) */
+/*           0 => boolean true */
+/*           1 => boolean false */
+/*           2 => string 'sslclient' (length=9) */
+/*       2 =>  */
+/* 	  array (size=3) */
+/*           0 => boolean true */
+/*           1 => boolean false */
+/*           2 => string 'sslserver' (length=9) */
+/*       3 =>  */
+/* 	  array (size=3) */
+/*           0 => boolean true */
+/*           1 => boolean false */
+/*           2 => string 'nssslserver' (length=11) */
+/*       4 =>  */
+/* 	  array (size=3) */
+/*           0 => boolean true */
+/*           1 => boolean false */
+/*           2 => string 'smimesign' (length=9) */
+/*       5 =>  */
+/* 	  array (size=3) */
+/*           0 => boolean true */
+/*           1 => boolean false */
+/*           2 => string 'smimeencrypt' (length=12) */
+/*       6 =>  */
+/* 	  array (size=3) */
+/*           0 => boolean false */
+/*           1 => boolean false */
+/*           2 => string 'crlsign' (length=7) */
+/*       7 =>  */
+/* 	  array (size=3) */
+/*           0 => boolean true */
+/*           1 => boolean true */
+/*           2 => string 'any' (length=3) */
+/*       8 =>  */
+/* 	  array (size=3) */
+/*           0 => boolean true */
+/*           1 => boolean false */
+/*           2 => string 'ocsphelper' (length=10) */
+/*       9 =>  */
+/* 	  array (size=3) */
+/*           0 => boolean false */
+/*           1 => boolean false */
+/*           2 => string 'timestampsign' (length=13) */
+/*   'extensions' =>  */
+/* 	  array (size=4) */
+/* 	  'subjectKeyIdentifier' => string 'B4:CC:43:1D:CC:D9:F9:67:F8:98:4C:5E:BA:DF:32:DF:FB:5D:FD:8C' (length=59) */
+/*       'authorityKeyIdentifier' => string 'keyid:BB:1D:4A:5E:90:DA:09:48:D8:E6:77:D2:B6:4A:BB:68:AE:41:9A:6F */
+/* DirName:/CN=Certificatore S.p.A./C=IT/O=Certificatore1/OU=Certification Service Provider */
+/* serial:01 */
+/* ' (length=165) */
+/* 	  'keyUsage' => string 'Digital Signature, Non Repudiation, Key Encipherment' (length=52) */
+/* 	  'subjectAltName' => string 'email:posta-certificata@newsvilpec.babel.it' (length=43) */
+
+	$this->debug_log('Veryfing signature: OK');	  
+
+
+	$this->result['consegnatoa'] = $cert_info['subject']['CN'];
+	$this->result['email'] = $cert_info['extensions']['subjectAltName'];
+	$this->result['consegnatoda'] = $cert_info['issuer']['CN'];
+	$this->result['validoda'] = strftime('%c', $cert_info['validFrom_time_t']); 
+	$this->result['validofinoa'] = strftime('%c', $cert_info['validTo_time_t']); 
+	$this->result['seriale'] = "";
 
       }
-
       else{
-	$this->smime_verify_debug_log('Veryfing signature: INVALID');	        
-	$this->add_hook('template_object_messageheaders', array($this, 'smime_verify_messageheaders_FAIL'));
-	$this->result['valid'] = false;
+
+	$this->debug_log('Veryfing signature: INVALID');	        
+
       }
+
+      $this->add_hook('template_object_messageheaders', array($this, 'messageheaders'));	  	
 	
       // destroying tempfile
-      unlink($filename);	
+      unlink($message_filename);	
+      unlink($cert_filename);	
 
     }
 
   }
-
 
 }

@@ -1,25 +1,48 @@
+var signatureInfo = "cane"; 
 
-
-function popup_data(response)
+function popup_data()
 {
-  $('#smime_verify_hidden').html(response);
-}
-
-rcmail.addEventListener('plugin.popup_data', popup_data);
-
-rcmail.addEventListener('init', function(evt) {
+   
+    signatureInfo = "gatto";
+    alert('funziona');
     
-    $('#smime_verify_signature').qtip({
-	
+    return true;
+    
+};
+
+function getSignatureInfo(){
+    
+    return signatureInfo;
+    
+};
+
+
+rcmail.addEventListener('init', function(evt) {  
+
+    $('#smime_verify_signatureOK').qtip({
+		
 	content: {
-            text: $('#smime_verify_hidden').html(); 
-	}, 
-	
+            text: $('#smime_verify_info_container').html() 
+        },
+		
 	style: {
-	    classes: 'qtip-blue'
+	    classes: 'qtip-green'
 	}
 	
     });
+    
+    $('#smime_verify_signatureFAILED').qtip({
+		
+	content: {
+            text: $('#smime_verify_info_container').html() 
+        },
+		
+	style: {
+	    classes: 'qtip-red'
+	}
+	
+    });
+
 
 });
 
