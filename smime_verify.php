@@ -118,40 +118,32 @@ class smime_verify extends rcube_plugin
    * Injects HTML into message headers tables to show sign 
    * verification result 
    */
-  function html_injector( $p, $injected_html){
+  function html_injector( $p, $to_inject_short, $to_inject_all, $info_container){    
     
-    // retrieving skin name, different skins use different displaying methods                                                                               
-    $skin = $this->rcmail->config->get('skin'); 
+    //inserting a div as container for certificate information to show inside popups
+    $short_headers_begin = '<table class="headers-table" id="preview-shortheaders"><tbody><tr>';
+    $short_headers_begin_pos = strpos( $p['content'], $short_headers_begin );    
+    $p['content'] = substr_replace($p['content'], $info_container, $short_headers_begin_pos, 0);
 
-    // for classic skin is enough modify 'content' field of $p 
-    if ( $skin == 'classic' || $p['id'] == 'preview-allheaders' ){
-
-      // obtaining position for message headers table end tags
-      $table_tail = "\n</tbody>\n</table>";
-      $injection_point = strrpos( $p['content'], $table_tail );
-      $new_html = substr( $p['content'], 0, $injection_point );
-
-      // classic skin shows headers in a table, we need a new row 
-      $injected_html = '<tr>' . $injected_html . '</tr>';
-      
-      // injecting concatenating table first part, new row, table end tags
-      $new_html .= $injected_html . $table_tail ; 
-      $p['content'] = $new_html ;  
+    //some skins use 'short header table', with id="preview-shortheaders"
+    $injected_html = $info_container . $short_headers_begin . "\n" . $to_inject_short;    
+    $p['content'] =  str_replace($short_headers_begin, $injected_html , $p['content']); 
     
-    }
-
-    // larry and babel skins use horizzontal showing 
-    if ( ($skin == 'larry' || $skin == 'babel') && $p['valueof'] == 'date' )
-      $p['content'] .= $injected_html;
-	
+    // all skins use a table with id="preview-allheaders"
+    $all_headers_begin = '<table id="preview-allheaders" class="headers-table">';    
+    $all_headers_begin_pos = strpos( $p['content'], $all_headers_begin );    
+    $table_tail = "\n</tbody>\n</table>";                                
+    $injection_point = strpos( $p['content'], $table_tail, $all_headers_begin_pos );
+    $p['content'] = substr_replace($p['content'], $to_inject_all, $injection_point, 0);
+    
     return $p;
   }
 
   /**
-   * Shows failed sign verification result
+   * Shows signature verification result, calls injector to insert html into page rendering
    */
-  function messageheaders($p)
-  {
+  function renderpage($p)
+  {    
 
     if ($this->result['valid']){
     
@@ -186,14 +178,21 @@ class smime_verify extends rcube_plugin
 			      $message);
 
     // string containing data about signature verification
-    $injected_html = sprintf('<td class="header-title">Verifica Firma</td>' . "\n".
-			     '<td id="smime_verify_signature%s" class="header date" style="padding:0px">'.
-			     '<img src="./plugins/smime_verify/img/firma%s.png" style="width:40px; height:27px" />'.
+    $label = 'Verifica Firma';
+			     
+    $injected_html_short = sprintf('<td class="header">'.
+			     '<img class="smime_verify_signature%s" '. 
+			     'src="./plugins/smime_verify/img/firma%s.png" style="width:40px; height:27px" />'.
 			     '</td>' . "\n",
 			     $ver_string,
 			     $ver_string);
-    
-    return $this->html_injector( $p, $injected_html . $info_container);
+
+    $injected_html_all = sprintf("\n" . '<tr><td class="header-title">%s</td>' . "\n" . '%s</tr>' ,
+				 $label,
+				 $injected_html_short);
+
+
+    return $this->html_injector( $p, $injected_html_short, $injected_html_all,  $info_container);
     
   }
     
@@ -250,84 +249,6 @@ class smime_verify extends rcube_plugin
       // choosing proper html generation function depending on result
       if ( $this->result['valid'] ){
 
-
-/* 	array (size=12) */
-/* 	  'name' => string '/C=IT/O=AcmePEC S.p.A./CN=Posta Certificata' (length=43) */
-/*   'subject' =>  */
-/* 	  array (size=3) */
-/* 	  'C' => string 'IT' (length=2) */
-/* 	  'O' => string 'AcmePEC S.p.A.' (length=14) */
-/* 	  'CN' => string 'Posta Certificata' (length=17) */
-/* 	  'hash' => string '01ebc369' (length=8) */
-/*   'issuer' =>  */
-/* 	  array (size=4) */
-/* 	  'CN' => string 'Certificatore S.p.A.' (length=20) */
-/* 	  'C' => string 'IT' (length=2) */
-/* 	  'O' => string 'Certificatore1' (length=14) */
-/* 	  'OU' => string 'Certification Service Provider' (length=30) */
-/*   'version' => int 2 */
-/* 	  'serialNumber' => string '2' (length=1) */
-/* 	  'validFrom' => string '110609135257Z' (length=13) */
-/* 	  'validTo' => string '140305135257Z' (length=13) */
-/*   'validFrom_time_t' => int 1307627577 */
-/*   'validTo_time_t' => int 1394027577 */
-/*   'purposes' =>  */
-/* 	  array (size=9) */
-/*       1 =>  */
-/* 	  array (size=3) */
-/*           0 => boolean true */
-/*           1 => boolean false */
-/*           2 => string 'sslclient' (length=9) */
-/*       2 =>  */
-/* 	  array (size=3) */
-/*           0 => boolean true */
-/*           1 => boolean false */
-/*           2 => string 'sslserver' (length=9) */
-/*       3 =>  */
-/* 	  array (size=3) */
-/*           0 => boolean true */
-/*           1 => boolean false */
-/*           2 => string 'nssslserver' (length=11) */
-/*       4 =>  */
-/* 	  array (size=3) */
-/*           0 => boolean true */
-/*           1 => boolean false */
-/*           2 => string 'smimesign' (length=9) */
-/*       5 =>  */
-/* 	  array (size=3) */
-/*           0 => boolean true */
-/*           1 => boolean false */
-/*           2 => string 'smimeencrypt' (length=12) */
-/*       6 =>  */
-/* 	  array (size=3) */
-/*           0 => boolean false */
-/*           1 => boolean false */
-/*           2 => string 'crlsign' (length=7) */
-/*       7 =>  */
-/* 	  array (size=3) */
-/*           0 => boolean true */
-/*           1 => boolean true */
-/*           2 => string 'any' (length=3) */
-/*       8 =>  */
-/* 	  array (size=3) */
-/*           0 => boolean true */
-/*           1 => boolean false */
-/*           2 => string 'ocsphelper' (length=10) */
-/*       9 =>  */
-/* 	  array (size=3) */
-/*           0 => boolean false */
-/*           1 => boolean false */
-/*           2 => string 'timestampsign' (length=13) */
-/*   'extensions' =>  */
-/* 	  array (size=4) */
-/* 	  'subjectKeyIdentifier' => string 'B4:CC:43:1D:CC:D9:F9:67:F8:98:4C:5E:BA:DF:32:DF:FB:5D:FD:8C' (length=59) */
-/*       'authorityKeyIdentifier' => string 'keyid:BB:1D:4A:5E:90:DA:09:48:D8:E6:77:D2:B6:4A:BB:68:AE:41:9A:6F */
-/* DirName:/CN=Certificatore S.p.A./C=IT/O=Certificatore1/OU=Certification Service Provider */
-/* serial:01 */
-/* ' (length=165) */
-/* 	  'keyUsage' => string 'Digital Signature, Non Repudiation, Key Encipherment' (length=52) */
-/* 	  'subjectAltName' => string 'email:posta-certificata@newsvilpec.babel.it' (length=43) */
-
 	$this->debug_log('Veryfing signature: OK');	  
 
 	$this->result['consegnatoa'] = $cert_info['subject']['CN'];
@@ -347,9 +268,9 @@ class smime_verify extends rcube_plugin
 
       }
 
-      $this->add_hook('template_object_messageheaders', array($this, 'messageheaders'));	  	
-	
-      // destroying tempfile
+      $this->add_hook('render_page', array($this, 'renderpage'));    
+      
+      // destroying tempfiles
       unlink($message_filename);	
       unlink($cert_filename);	
 
