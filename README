@@ -1,14 +1,21 @@
-SMIME Verify provides SMIME signature verification for PEC 
-(italian Posta Elettronica Certificata) messages. 
+SMIME Verify provides SMIME signature verification for PEC s
+(italian Registered E-mail) messages. 
 
 It verifies signature of messages with MIME multipart/signed, 
 showing signing certificate information.
 
 It supports 'classic' and 'larry' skins.
-   
-Author: Ramon Orrù.
 
-Icons in img/ dir are designed and realized by Cristina Bevilacqua.
+This plugin has been developed by:
+
+Babel S.r.l.
+Piazza San Benedetto da Norcia 33
+00040, Pomezia (RM) Italy    
+website: www.babel.it 
+
+Author: Ramon Orrù <rorru@babel.it>
+
+Icons in img dir are designed and realized by Cristina Bevilacqua.
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License version 2                                                                                

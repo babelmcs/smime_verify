@@ -3,7 +3,21 @@
  +-------------------------------------------------------------------------+
  | smime_verify Plugin for Roundcube                                       |
  | Version 0.1                                                             |
- |                                                                         |  
+ |                                                                         |
+ | SMIME Verify provides SMIME signature verification for PEC              |
+ | (italian Registered E-mail) messages.                                   |
+ | It verifies signature of messages with 'multipart/signed' MIME,         |
+ | showing signing certificate information.                                |
+ |                                                                         |
+ | It supports 'classic' and 'larry' skins.                                |
+ |                                                                         |
+ | This plugin has been developed by:                                      |
+ |                                                                         |
+ | Babel S.r.l.                                                            |
+ | Piazza San Benedetto da Norcia 33                                       |
+ | 00040, Pomezia (RM) Italy                                               |
+ | website: www.babel.it                                                   |
+ |                                                                         |
  | This plugin provides SMIME signature verification for PEC messages.     |
  | It verifies signature of messages with MIME multipart/signed            |
  |                                                                         |
@@ -21,7 +35,7 @@
  | 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.             |
  |                                                                         |
  +-------------------------------------------------------------------------+
- | Author: Ramon Orrù                                                      |
+ | Author: Ramon Orrù <rorru@babel.it>                                     |
  +-------------------------------------------------------------------------+
 */
 
