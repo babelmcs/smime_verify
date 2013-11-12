@@ -1,0 +1,15 @@
+div.smime_verify_info_container{
+    visibility: hidden; 
+    width: 0px; 
+    height: 0px;
+}
+
+img.smime_verify_signatureOK{
+    width: 40px; 
+    height: 27px;
+}
+
+img.smime_verify_signatureFAILED{
+    width: 40px; 
+    height: 27px;
+}

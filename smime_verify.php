@@ -48,6 +48,7 @@ class smime_verify extends rcube_plugin
 
     $this->include_script('jquery.qtip.min.js');
     $this->include_stylesheet('jquery.qtip.min.css');
+    $this->include_stylesheet('smime_verify.css');
     $this->include_script('smime_verify.js');
     
     $this->log_file = $this->rcmail->config->get('smime_verify_logfile', 'smime_verify');
@@ -174,15 +175,14 @@ class smime_verify extends rcube_plugin
     
     }
 
-    $info_container = sprintf('<div id="smime_verify_info_container" style="visibility:hidden; width:0px; height:0px">%s</div>',
+    $info_container = sprintf('<div class="smime_verify_info_container">%s</div>',
 			      $message);
 
     // string containing data about signature verification
     $label = 'Verifica Firma';
 			     
     $injected_html_short = sprintf('<td class="header">'.
-			     '<img class="smime_verify_signature%s" '. 
-			     'src="./plugins/smime_verify/img/firma%s.png" style="width:40px; height:27px" />'.
+			     '<img class="smime_verify_signature%s" src="./plugins/smime_verify/img/firma%s.png"/>'.
 			     '</td>' . "\n",
 			     $ver_string,
 			     $ver_string);
