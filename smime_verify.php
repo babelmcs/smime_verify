@@ -60,7 +60,7 @@ class smime_verify extends rcube_plugin
     $this->rcmail = rcmail::get_instance();
 
     $this->load_config();
-
+    
     $section = rcube_utils::get_input_value('_section', rcube_utils::INPUT_GET);
 
     $this->include_script('jquery.qtip.min.js');
