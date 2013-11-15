@@ -21,19 +21,33 @@ This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License version 2                                                                                
 as published by the Free Software Foundation.  
 
-Plugin directory tree
+Plugin directory tree:
 .
+├── benchmarks
+│   ├── BENCHMARKS
+│   ├── cpu_100c.jpg
+│   ├── cpu_10c.jpg
+│   ├── diskr_100c.jpg
+│   ├── diskr_10c.jpg
+│   ├── diskw_100c.jpg
+│   ├── diskw_10c.jpg
+│   ├── results_100c_nosign.txt
+│   ├── results_100c_sign.txt
+│   ├── results_10c_nosign.txt
+│   ├── results_10c_sign.txt
+│   ├── st_100c_nosign.jpg
+│   ├── st_100c_sign.jpg
+│   ├── st_10c_nosign.jpg
+│   └── st_10c_sign.jpg
 ├── config.inc.php
 ├── img
-│   ├── firmaFAILED.png
-│   └── firmaOK.png
+│   ├── firmaFAILED.png
+│   └── firmaOK.png
 ├── jquery.qtip.min.css
 ├── jquery.qtip.min.js
 ├── README
 ├── smime_verify.css
 ├── smime_verify.js
-├── #smime_verify.php#
 ├── smime_verify.php
 └── tests
     └── Smime_verify.php
-
