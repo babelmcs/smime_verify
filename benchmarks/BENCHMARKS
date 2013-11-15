@@ -1,0 +1,47 @@
+DISCLAIMER: NONE OF THIS BENCHMARKS AND/OR RELATED RESULTS ARE INTENDED AS
+A GUARANTEE OF WELL FUNCTIONING OR GOOD PERFORMING SOFTWARE. 
+THIS BENCHMARKS ARE PART OF sime_verify PLUGIN, AND LIKE THE PLUGIN ITSELF, 
+COMES AS THEY ARE WITH NO GUARANTEE AT ALL.
+
+In this directory are reported some benchmark results,
+actually a comparison between the system statistics obtained for 
+a bunch of request for a signed message showing (when smime_verify is involved), 
+and for non signed message showing. 
+The goal is to point out some differences in performance, benchmarking an Roundcube 
+installation in a basic way.
+Two benchmark cases are covered:
+ (A) - 10000 requests using 10 concurrents
+ (B) - 10000 requests using 100 concurrents
+Both cases are observed for signed and non signed messages.
+
+For running this benchmarks, Apache Benchmark has been used, collecting general 
+information about bench runs:
+
+- results_100c_nosign.txt  ==> (A) bench with non signed messages 
+- results_100c_sign.txt ==> (A) bench with signed messages 
+- results_10c_nosign.txt ==> (B) bench with non signed messages 
+- results_10c_sign.txt ==> (B) bench with signed messages 
+
+
+AB supplies directly a .tsv file for further analysis, so some Gnuplot prints 
+about serving time are available:
+
+- st_100c_nosign.jpg ==>  100 concurrents, no signature
+- st_100c_sign.jpg ==> 100 concurrents, signature
+- st_10c_nosign.jpg ==> 10 concurrents, no signature
+- st_10c_sign.jpg ==> 10 concurrents, signature
+
+
+
+A few graphs has been generated, using Gnuplot from a dstat dump, to compare directly 
+signed and non signed messages on the most important system statistics:
+
+- cpu_100c.jpg ==> user cpu load, %, 100 concurrents
+- cpu_10c.jpg ==> user cpu load, %, 10 concurrents
+- diskr_100c.jpg ==> disk reads, bytes, 100 concurrents
+- diskr_10c.jpg ==> disk reads, bytes, 10 concurrents
+- diskw_100c.jpg ==> disk writes,  bytes, 100 concurrents
+- diskw_10c.jpg ==> disk writes, bytes, 10 concurrents
+
+
+

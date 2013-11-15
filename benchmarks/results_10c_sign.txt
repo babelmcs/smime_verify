@@ -1,0 +1,43 @@
+This is ApacheBench, Version 2.3 <$Revision: 1430300 $>
+Copyright 1996 Adam Twiss, Zeus Technology Ltd, http://www.zeustech.net/
+Licensed to The Apache Software Foundation, http://www.apache.org/
+
+Benchmarking 10.0.8.35 (be patient)
+
+
+Server Software:        Apache/2.2.15
+Server Hostname:        10.0.8.35
+Server Port:            80
+
+Document Path:          /mcspec/?_task=mail
+Document Length:        7413 bytes
+
+Concurrency Level:      10
+Time taken for tests:   1271.516 seconds
+Complete requests:      10000
+Failed requests:        0
+Write errors:           0
+Total transferred:      78820000 bytes
+HTML transferred:       74130000 bytes
+Requests per second:    7.86 [#/sec] (mean)
+Time per request:       1271.516 [ms] (mean)
+Time per request:       127.152 [ms] (mean, across all concurrent requests)
+Transfer rate:          60.54 [Kbytes/sec] received
+
+Connection Times (ms)
+              min  mean[+/-sd] median   max
+Connect:        0    1  26.5      0    1003
+Processing:   633 1270 108.8   1250    4430
+Waiting:      620 1157  91.2   1140    4313
+Total:        634 1271 112.0   1251    4430
+
+Percentage of the requests served within a certain time (ms)
+  50%   1251
+  66%   1284
+  75%   1310
+  80%   1333
+  90%   1402
+  95%   1459
+  98%   1540
+  99%   1641
+ 100%   4430 (longest request)
