@@ -24,6 +24,18 @@ rcmail.addEventListener('init', function(evt) {
 	
     });
 
+    $('.smime_verify_signatureEXPIRED').qtip({
+		
+	content: {
+            text: $('.smime_verify_info_container').html() 
+        },
+		
+	style: {
+	    classes: 'qtip-orange'
+	}
+	
+    });
+
 
 });
 

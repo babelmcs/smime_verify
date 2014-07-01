@@ -13,3 +13,8 @@ img.smime_verify_signatureFAILED{
     width: 40px; 
     height: 27px;
 }
+
+img.smime_verify_signatureEXPIRED{
+    width: 40px; 
+    height: 27px;
+}

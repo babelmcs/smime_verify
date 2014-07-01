@@ -9,7 +9,6 @@
   * for avoid empty conf arrays on some versions
   */
 
-
 // Temp directory for signatures validating. Default '/tmp'.
 // Must be writeable by PHP process
 $config['smime_verify_tempdir'] =  '/tmp';
@@ -22,10 +21,10 @@ $config['smime_verify_debug'] =  'false';
 
 // Temp directory for signatures validating. Default '/tmp'.
 // Must be writeable by PHP process
-$rcmail_config['smime_verify_tempdir'] =  '/tmp';
+//$rcmail_config['smime_verify_tempdir'] =  '/tmp';
 
 // Log file for specific logging. Default 'smime_verify'.
-$rcmail_config['smime_verify_logfile'] =  'smime_verify';
+//$rcmail_config['smime_verify_logfile'] =  'smime_verify';
 
 // Debug logging. Default 'false'.
-$rcmail_config['smime_verify_debug'] =  'false';
+//$rcmail_config['smime_verify_debug'] =  'true';

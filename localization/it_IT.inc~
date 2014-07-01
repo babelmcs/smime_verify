@@ -1,0 +1,54 @@
+<?php
+
+
+            $ver_string = "OK";
+            $message = sprintf('<b>Questo messaggio &egrave; firmato</b></br>'.
+            'Il messaggio non &egrave; stato modificato</br>'.
+            'Il certificato &egrave; verificato</br>'.
+            'L\'indirizzo mittente corrisponde al certificato allegato</br>'.
+            '</br><b>Info sul certificato:</b></br>'.
+            '<b>Consegnato a:</b> &nbsp; %s</br>'.
+            '<b>e-mail:</b> &nbsp; %s</br>'.
+            '<b>Consegnato da:</b> &nbsp; %s</br>'.
+            '<b>Valido da:</b> &nbsp; %s</br>'.
+            '<b>Valido fino a:</b> &nbsp; %s</br>'.
+            '<b>Seriale:</b> &nbsp; %s',
+            $this->result['consegnatoa'],
+            $this->result['email'],
+            $this->result['consegnatoda'],
+            $this->result['validoda'],
+            $this->result['validofinoa'],
+            $this->result['seriale']);
+
+            if ($this->result['expired_cert']) {
+                $ver_string = "EXPIRED";
+                $message = "<b>La firma per questo messaggio risulta verificata ma il relativo certificato è scaduto</b></br>";
+            }
+
+        } else {
+            $ver_string = "FAILED";
+            $message = "<b>La firma per questo messaggio non risulta verificata</b></br>";
+        }
+
+        $info_container = sprintf('<div class="smime_verify_info_container">%s</div>',
+        $message);
+
+        // string containing data about signature verification                                                                                                                      
+        $label = 'Verifica Firma';
+
+
+$labels['smime_verify_header_title']  = 'Verifica Firma
+';
+$labels['change_password_message']  = 'La password utente è scaduta, occorre inserirne una nuova.';
+
+$messages['password_nouppercase_error'] = 'La password inserita non contiene caratteri alfabetici maiuscoli.';
+$messages['password_credentials_error'] = 'Password attuale non corretta.';
+$messages['password_nolowercase_error'] =  'La password inserita non contiene caratteri alfabetici minuscoli.';
+$messages['password_history_error'] =  'La password inserita risulta usata in precedenza.';
+$messages['password_nodigit_error'] =  'La password inserita non contiene numeri.';
+$messages['password_length_error'] =  'La password inserita risulta troppo corta.';
+$messages['password_syntax_error'] =  'La password inserita non rispetta la sintassi prevista.';
+
+?>
+
+
