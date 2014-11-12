@@ -283,8 +283,9 @@ class smime_verify extends rcube_plugin
                 $date_header_string = $message->get_header('date');
                 // if we are able to read date header, we can check if certificate expiratin date was reached  
                 if ($date_header_string) { // date header present and read
+		    $timestamp = rcube_utils::strtotime($date_header_string);
+                    $date_header = new DateTime("@".$timestamp);
                     $this->debug_log("Date header:".$date_header_string);
-                    $date_header = DateTime::createFromFormat('D, d M Y H:i:s O*', $date_header_string); 
                     $this->debug_log("Parsed date:".$date_header->format('d-m-Y H:i:s'));
                     // if date parsing is successfull... we should compare it respect to certifcate expiration
                     if ($date_header) { 
