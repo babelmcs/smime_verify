@@ -10,10 +10,11 @@ This plugin has been developed by:
 
 Babel S.r.l.
 Piazza San Benedetto da Norcia 33
-00040, Pomezia (RM) Italy    
-website: www.babel.it 
+00040, Pomezia (RM) Italy
+website: www.babel.it
 
 Author: Ramon Orrù <rorru@babel.it>
+Contributor: Danilo Abbasciano <danilo.abbasciano@par-tec.it>
 
 Icons in img dir are designed and realized by Cristina Bevilacqua.
 
@@ -39,12 +40,15 @@ Plugin directory tree:
 │   ├── st_100c_sign.jpg
 │   ├── st_10c_nosign.jpg
 │   └── st_10c_sign.jpg
-├── config.inc.php
+├── config-dist.inc.php
 ├── img
+│   ├── firmaEXPIRED.png
 │   ├── firmaFAILED.png
 │   └── firmaOK.png
 ├── jquery.qtip.min.css
 ├── jquery.qtip.min.js
+├── localization
+│   └── it_IT.inc
 ├── README
 ├── smime_verify.css
 ├── smime_verify.js

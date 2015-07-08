@@ -36,6 +36,7 @@
    |                                                                         |
    +-------------------------------------------------------------------------+
    | Author: Ramon Orrù <rorru@babel.it>                                     |
+   | Contributor: Danilo Abbasciano <danilo@piumalab.org>
    +-------------------------------------------------------------------------+
 */
 
@@ -241,32 +242,26 @@ class smime_verify extends rcube_plugin
 
             // tempfile filenames
             $message_filename = 'smime_verify' . $message->uid . '.eml';
-            $cert_filename = 'smime_verify' . $message->uid  . '.pem';
 
-            // creating and opening tempfiles
+	    // creating and opening tempfiles
             if ( !($message_filename = tempnam( $tempdir, $message_filename)) || !($fp = fopen($message_filename, 'w+')) ) {
                 $this->error_log('Error opening temp file ' . $message_filename . ' for signature verification' );
                 return;
             }
 
-            if ( !($cert_filename = tempnam( $tempdir, $cert_filename)) ) {
-                $this->error_log('Error creating temp file ' . $cert_filename . ' for certificate reading' );
-                return;
-            }
-
             // gets message content, fills temp file, invokes openssl functions on it
             $this->debug_log('Using tempfile: ' . $message_filename . ' for signature verification' );
-            $this->debug_log('Using tempfile: ' . $cert_filename . ' for certificate reading' );
 
             $this->result = array();
 
             $this->rcmail->storage->get_raw_body($message->uid, $fp);
 
             // verifies signature
-            $this->result['valid'] =  openssl_pkcs7_verify($message_filename, PKCS7_NOVERIFY, $cert_filename);
+	    ob_start();
+	    $this->result['valid'] = openssl_pkcs7_verify($message_filename, PKCS7_NOVERIFY, 'php://stdout');
+	    $cert_content = ob_get_contents();
+	    ob_end_clean();
 
-            $cert_info = array();
-            $cert_content = file_get_contents($cert_filename);
             $cert_info = openssl_x509_parse( $cert_content );
 
             // choosing proper html generation function depending on result
@@ -316,10 +311,6 @@ class smime_verify extends rcube_plugin
 
             // destroying tempfiles
             unlink($message_filename);
-            unlink($cert_filename);
-
         }
-
     }
-
 }
