@@ -11,6 +11,7 @@
 
 // Temp directory for signatures validating. Default '/tmp'.
 // Must be writeable by PHP process
+// I recommend using a temporary directory in tmpfs
 $config['smime_verify_tempdir'] =  '/tmp';
 
 // Log file for specific logging. Default 'smime_verify'.
